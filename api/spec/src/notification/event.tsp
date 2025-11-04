@@ -66,6 +66,19 @@ model NotificationEventDeliveryStatus {
 }
 
 /**
+ * A notification event that will be re-sent.
+ */
+@friendlyName("NotificationEventResendParams")
+model NotificationEventResendParams {
+  /**
+   * Notification channels to which the event should be re-sent.
+   */
+  @visibility(Lifecycle.Read)
+  @summary("Channels")
+  channels?: Array<ULID>;
+}
+
+/**
  * The delivery state of the notification event to the channel.
  */
 @friendlyName("NotificationEventDeliveryStatusState")
@@ -233,5 +246,14 @@ interface Events {
   @summary("Get notification event")
   get(
     @path eventId: string,
+  ): NotificationEvent | OpenMeter.NotFoundError | OpenMeter.CommonErrors;
+
+  @post
+  @route("/{eventId}/resend")
+  @operationId("resendNotificationEvent")
+  @summary("Re-send notification event")
+  resend(
+    @path eventId: ULID,
+    @body body: NotificationEventResendParams,
   ): NotificationEvent | OpenMeter.NotFoundError | OpenMeter.CommonErrors;
 }
