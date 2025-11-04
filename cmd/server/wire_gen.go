@@ -366,16 +366,6 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		cleanup()
 		return Application{}, nil, err
 	}
-	customerSubjectValidatorHook, err := common.NewCustomerSubjectValidatorServiceHook(logger, subjectService, customerService)
-	if err != nil {
-		cleanup6()
-		cleanup5()
-		cleanup4()
-		cleanup3()
-		cleanup2()
-		cleanup()
-		return Application{}, nil, err
-	}
 	customerEntitlementValidatorHook, err := common.NewCustomerEntitlementValidatorServiceHook(logger, entitlement, customerService)
 	if err != nil {
 		cleanup6()
@@ -543,18 +533,6 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		cleanup()
 		return Application{}, nil, err
 	}
-	v8, err := common.NewSubjectEntitlementValidatorHook(logger, entitlement, subjectService)
-	if err != nil {
-		cleanup8()
-		cleanup7()
-		cleanup6()
-		cleanup5()
-		cleanup4()
-		cleanup3()
-		cleanup2()
-		cleanup()
-		return Application{}, nil, err
-	}
 	health := common.NewHealthChecker(logger)
 	runtimeMetricsCollector, err := common.NewRuntimeMetricsCollector(meterProvider, telemetryConfig, logger)
 	if err != nil {
@@ -569,7 +547,7 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		return Application{}, nil, err
 	}
 	telemetryHandler := common.NewTelemetryHandler(metricsTelemetryConfig, health, runtimeMetricsCollector, logger)
-	v9, cleanup9 := common.NewTelemetryServer(telemetryConfig, telemetryHandler)
+	v8, cleanup9 := common.NewTelemetryServer(telemetryConfig, telemetryHandler)
 	terminationConfig := conf.Termination
 	terminationChecker, err := common.NewTerminationChecker(terminationConfig, health)
 	if err != nil {
@@ -591,7 +569,6 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		AppRegistry:                      appRegistry,
 		Customer:                         customerService,
 		CustomerSubjectHook:              customerSubjectHook,
-		CustomerSubjectValidatorHook:     customerSubjectValidatorHook,
 		CustomerEntitlementValidatorHook: customerEntitlementValidatorHook,
 		Billing:                          billingService,
 		EntClient:                        client,
@@ -620,10 +597,9 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		Secret:                           secretserviceService,
 		SubjectService:                   subjectService,
 		SubjectCustomerHook:              v7,
-		SubjectEntitlementValidatorHook:  v8,
 		Subscription:                     subscriptionServiceWithWorkflow,
 		StreamingConnector:               connector,
-		TelemetryServer:                  v9,
+		TelemetryServer:                  v8,
 		TerminationChecker:               terminationChecker,
 		RuntimeMetricsCollector:          runtimeMetricsCollector,
 		Tracer:                           tracer,
@@ -651,7 +627,6 @@ type Application struct {
 	AppRegistry                      common.AppRegistry
 	Customer                         customer.Service
 	CustomerSubjectHook              common.CustomerSubjectHook
-	CustomerSubjectValidatorHook     common.CustomerSubjectValidatorHook
 	CustomerEntitlementValidatorHook common.CustomerEntitlementValidatorHook
 	Billing                          billing.Service
 	EntClient                        *db.Client
@@ -680,7 +655,6 @@ type Application struct {
 	Secret                           secret.Service
 	SubjectService                   subject.Service
 	SubjectCustomerHook              hooks.CustomerSubjectHook
-	SubjectEntitlementValidatorHook  hooks.EntitlementValidatorHook
 	Subscription                     common.SubscriptionServiceWithWorkflow
 	StreamingConnector               streaming.Connector
 	TelemetryServer                  common.TelemetryServer

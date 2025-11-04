@@ -48,7 +48,6 @@ type Application struct {
 	AppRegistry                      common.AppRegistry
 	Customer                         customer.Service
 	CustomerSubjectHook              common.CustomerSubjectHook
-	CustomerSubjectValidatorHook     common.CustomerSubjectValidatorHook
 	CustomerEntitlementValidatorHook common.CustomerEntitlementValidatorHook
 	Billing                          billing.Service
 	EntClient                        *db.Client
@@ -77,7 +76,6 @@ type Application struct {
 	Secret                           secret.Service
 	SubjectService                   subject.Service
 	SubjectCustomerHook              subjecthooks.CustomerSubjectHook
-	SubjectEntitlementValidatorHook  subjecthooks.EntitlementValidatorHook
 	Subscription                     common.SubscriptionServiceWithWorkflow
 	StreamingConnector               streaming.Connector
 	TelemetryServer                  common.TelemetryServer
@@ -95,7 +93,6 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		common.Config,
 		common.Customer,
 		common.NewCustomerSubjectServiceHook,
-		common.NewCustomerSubjectValidatorServiceHook,
 		common.NewCustomerEntitlementValidatorServiceHook,
 		common.Database,
 		common.Entitlement,
@@ -125,7 +122,6 @@ func initializeApplication(ctx context.Context, conf config.Configuration) (Appl
 		common.ServerProvisionTopics,
 		common.Subject,
 		common.NewSubjectCustomerHook,
-		common.NewSubjectEntitlementValidatorHook,
 		common.Telemetry,
 		common.TelemetryLoggerNoAdditionalMiddlewares,
 		common.NewTerminationChecker,
