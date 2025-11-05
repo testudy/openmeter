@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -250,6 +251,123 @@ func (s *EventTestSuite) TestGetEvent(ctx context.Context, t *testing.T) {
 	})
 	require.NoError(t, err, "Creating rule must not return error")
 	require.NotNil(t, event2, "Rule must not be nil")
+}
+
+func (s *EventTestSuite) TestResendEvent(ctx context.Context, t *testing.T) {
+	service := s.Env.Notification()
+
+	channelIn := NewCreateChannelInput(s.Env.Namespace(), "NotificationEventResendTest")
+
+	channel, err := service.CreateChannel(ctx, channelIn)
+	require.NoError(t, err, "Creating channel must not return error")
+	require.NotNil(t, channel, "Channel must not be nil")
+
+	channelInDisabled := NewCreateChannelInput(s.Env.Namespace(), "NotificationEventResendTestDisabled")
+	channelInDisabled.Disabled = true
+
+	channelDisabled, err := service.CreateChannel(ctx, channelInDisabled)
+	require.NoError(t, err, "Creating channel must not return error")
+	require.NotNil(t, channel, "Channel must not be nil")
+
+	ruleIn := NewCreateRuleInput(s.Env.Namespace(), "NotificationEventResend", channel.ID, channelDisabled.ID)
+
+	rule, err := service.CreateRule(ctx, ruleIn)
+	require.NoError(t, err, "Creating rule must not return error")
+	require.NotNil(t, rule, "Rule must not be nil")
+
+	// TODO: create separate event for each subTest
+	eventIn := NewCreateEventInput(s.Env.Namespace(), notification.EventTypeBalanceThreshold, rule.ID, NewBalanceThresholdPayload())
+
+	event, err := service.CreateEvent(ctx, eventIn)
+	require.NoError(t, err, "Creating event must not return error")
+	require.NotNil(t, event, "Rule must not be nil")
+
+	/*
+		Test:
+		- happy cases:
+			- event exists, no channels provided
+			- event exists, valid channels provided
+			- event exists, only resend delivery statuses with allowed states
+		- error cases:
+			- event does not exist
+			- event exists, disabled channel provided
+			- event exists, non-existent channel provided
+	*/
+
+	subTests := []struct {
+		Name             string
+		Input            notification.ResendEventInput
+		ExpectError      bool
+		ExpectedErrorMsg string
+	}{
+		{
+			Name: "WithoutChannels",
+			Input: notification.ResendEventInput{
+				NamespacedID: event.NamespacedID,
+			},
+			ExpectError: false,
+		},
+		{
+			Name: "WithValidChannels",
+			Input: notification.ResendEventInput{
+				NamespacedID: event.NamespacedID,
+				Channels: []string{
+					channel.ID,
+				},
+			},
+			ExpectError: false,
+		},
+
+		{
+			Name: "WithDisabledChannels",
+			Input: notification.ResendEventInput{
+				NamespacedID: event.NamespacedID,
+				Channels: []string{
+					channelDisabled.ID,
+				},
+			},
+			ExpectError:      true,
+			ExpectedErrorMsg: fmt.Sprintf("channel %s is disabled", channelDisabled.ID),
+		},
+		{
+			Name: "WithNonExistentChannels",
+			Input: notification.ResendEventInput{
+				NamespacedID: event.NamespacedID,
+				Channels: []string{
+					"NotificationResendEventTestNonExistentChannel",
+				},
+			},
+			ExpectError:      true,
+			ExpectedErrorMsg: fmt.Sprintf("channel %s not found", "NotificationResendEventTestNonExistentChannel"),
+		},
+		{
+			Name: "WithInvalidEvent",
+			Input: notification.ResendEventInput{
+				NamespacedID: models.NamespacedID{
+					Namespace: event.Namespace,
+					ID:        "invalid",
+				},
+			},
+			ExpectError:      true,
+			ExpectedErrorMsg: "failed to get event",
+		},
+	}
+
+	for _, test := range subTests {
+		t.Run(test.Name, func(t *testing.T) {
+			event, err := service.ResendEvent(ctx, test.Input)
+
+			if test.ExpectError {
+				require.Error(t, err, "ResendEvent must return error")
+				require.ErrorContains(t, err, test.ExpectedErrorMsg)
+			} else {
+				require.NoError(t, err, "ResendEvent must not return error")
+				require.NotNil(t, event, "Notification event must not be nil")
+			}
+
+			// TODO: assert that only allowedStates (success or failure) were reset to "sending"
+		})
+	}
 }
 
 func (s *EventTestSuite) TestListEvents(ctx context.Context, t *testing.T) {

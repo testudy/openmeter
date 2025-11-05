@@ -126,6 +126,10 @@ func TestNotification(t *testing.T) {
 			testSuite.TestGetEvent(ctx, t)
 		})
 
+		t.Run("ResendEvent", func(t *testing.T) {
+			testSuite.TestResendEvent(ctx, t)
+		})
+
 		t.Run("ListEvents", func(t *testing.T) {
 			testSuite.TestListEvents(ctx, t)
 		})
