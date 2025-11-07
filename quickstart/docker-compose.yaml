@@ -1,3 +1,5 @@
+version: "v1.0.0-beta.224"
+
 # please use port numbers in the 40000 range so that it doesn't conflict with the main dev environment
 services:
   openmeter:
@@ -16,6 +18,8 @@ services:
       - "127.0.0.1:48888:8888"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://openmeter:8888/api/v1/debug/metrics"]
       interval: 5s
@@ -40,6 +44,8 @@ services:
       - "127.0.0.1:40000:10000"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
 
   balance-worker:
     image: ghcr.io/openmeterio/openmeter:latest
@@ -59,6 +65,8 @@ services:
       - "127.0.0.1:40001:10000"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
 
   notification-service:
     image: ghcr.io/openmeterio/openmeter:latest
@@ -76,6 +84,8 @@ services:
       - "127.0.0.1:40002:10000"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
 
   billing-worker:
     image: ghcr.io/openmeterio/openmeter:latest
@@ -93,6 +103,8 @@ services:
       - "127.0.0.1:40003:10000"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
 
   openmeter-jobs:
     image: ghcr.io/openmeterio/openmeter:latest
@@ -110,43 +122,83 @@ services:
         condition: service_healthy
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
+    networks:
+      - openmeter_net
 
   kafka:
     extends:
       file: ../docker-compose.base.yaml
       service: kafka
+    restart: unless-stopped
     ports:
       - "127.0.0.1:49092:29092"
+    # Persist Kafka data so container restarts don't lose topics/messages
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      - kafka-secrets:/etc/kafka/secrets
+    networks:
+      - openmeter_net
 
   clickhouse:
     extends:
       file: ../docker-compose.base.yaml
       service: clickhouse
+    restart: unless-stopped
     ports:
       - "127.0.0.1:48123:8123"
       - "127.0.0.1:49000:9000"
       - "127.0.0.1:49009:9009"
+    # Persist ClickHouse data
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    networks:
+      - openmeter_net
+
+  ch-ui:
+    extends:
+      file: ../docker-compose.base.yaml
+      service: ch-ui
+    networks:
+      - openmeter_net
+    ports:
+      - "127.0.0.1:45521:5521"
+    # Expose the ClickHouse UI on localhost:45521 while keeping ClickHouse HTTP API on 8123
 
   redis:
     extends:
       file: ../docker-compose.base.yaml
       service: redis
+    restart: unless-stopped
     ports:
       - "127.0.0.1:46379:6379"
+    # Persist Redis data (RDB/AOF depending on config)
+    volumes:
+      - redis-data:/data
+    networks:
+      - openmeter_net
 
   postgres:
     extends:
       file: ../docker-compose.base.yaml
       service: postgres
+    restart: unless-stopped
     ports:
       - "127.0.0.1:45432:5432"
+    # Persist Postgres data
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - openmeter_net
 
   svix:
     extends:
       file: ../docker-compose.base.yaml
       service: svix
+    restart: unless-stopped
     ports:
       - "127.0.0.1:48071:8071"
+    networks:
+      - openmeter_net
 
 configs:
   svix_sql:
@@ -155,4 +207,24 @@ configs:
       CREATE DATABASE svix;
       GRANT ALL PRIVILEGES ON DATABASE svix TO svix;
       ALTER DATABASE svix OWNER TO svix;
+
+# Named volumes ensure data survives container recreation/restart.
+volumes:
+  clickhouse-data:
+    name: openmeter_clickhouse_data
+  kafka-data:
+    name: openmeter_kafka_data
+  kafka-secrets:
+    name: openmeter_kafka_secrets
+  redis-data:
+    name: openmeter_redis_data
+  postgres-data:
+    name: openmeter_postgres_data
+
+# Single network to make it easy to migrate services out of this compose
+# later: external services can be put on the same network or you can
+# remove the internal service definitions and point app config to external hosts.
+networks:
+  openmeter_net:
+    driver: bridge
 
