@@ -57,7 +57,7 @@ services:
       - clickhouse
     restart: always
     environment:
-      VITE_CLICKHOUSE_URL: http://localhost:8123
+      VITE_CLICKHOUSE_URL: http://localhost:48123
       VITE_CLICKHOUSE_USER: default
       VITE_CLICKHOUSE_PASS: default
 

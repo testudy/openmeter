@@ -18,7 +18,7 @@ cd openmeter/quickstart
 Launch OpenMeter and its dependencies via:
 
 ```sh
-docker compose up -d
+docker compose -p openmeter up -d
 ```
 
 ## 2. Ingest usage event(s)
@@ -173,5 +173,5 @@ meters:
 Once you are done, stop any running instances:
 
 ```sh
-docker compose down -v
+docker compose down
 ```
