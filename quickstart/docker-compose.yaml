@@ -13,7 +13,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "127.0.0.1:48888:8888"
+      - "48888:8888"
     volumes:
       - ./config.yaml:/etc/openmeter/config.yaml
     networks:
